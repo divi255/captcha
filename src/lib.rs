@@ -113,7 +113,6 @@ pub struct RngCaptcha<T> {
 }
 
 impl<T: rand::Rng + rand::RngCore> RngCaptcha<T> {
-
     pub fn from_rng(rng: T) -> RngCaptcha<T> {
         // TODO fixed width + height
         let w = 400;
@@ -138,6 +137,17 @@ impl<T: rand::Rng + rand::RngCore> RngCaptcha<T> {
     /// Returns an empty CAPTCHA.
     pub fn new() -> Captcha {
         Captcha::from_rng(rng())
+    }
+
+    /// Set the captcha value to the given characters.
+    pub fn set_value(&mut self, chars: &[char]) -> &mut Self {
+        for c in chars {
+            let Some(i) = self.font.png(*c).and_then(Image::from_png) else {
+                continue;
+            };
+            self.add_char_and_image(*c, i);
+        }
+        self
     }
 
     /// Applies the filter `f` to the CAPTCHA.
@@ -199,17 +209,22 @@ impl<T: rand::Rng + rand::RngCore> RngCaptcha<T> {
     /// Adds a random character using the current font.
     pub fn add_char(&mut self) -> &mut Self {
         if let Some((c, i)) = self.random_char_as_image() {
-            let x = self.text_area.right;
-            let y = (self.text_area.bottom + self.text_area.top) / 2 - i.height() / 2;
-            self.img.add_image(x, y, &i);
-
-            self.text_area.top = min(self.text_area.top, y);
-            self.text_area.right = x + i.width() - 1;
-            self.text_area.bottom = max(self.text_area.bottom, y + i.height() - 1);
-            self.chars.push(c);
+            self.add_char_and_image(c, i);
         }
 
         self
+        // TODO automatically resize if many characters are added
+    }
+
+    fn add_char_and_image(&mut self, c: char, i: Image) {
+        let x = self.text_area.right;
+        let y = (self.text_area.bottom + self.text_area.top) / 2 - i.height() / 2;
+        self.img.add_image(x, y, &i);
+
+        self.text_area.top = min(self.text_area.top, y);
+        self.text_area.right = x + i.width() - 1;
+        self.text_area.bottom = max(self.text_area.bottom, y + i.height() - 1);
+        self.chars.push(c);
         // TODO automatically resize if many characters are added
     }
 
